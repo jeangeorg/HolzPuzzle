@@ -10,6 +10,7 @@ Uebung zur Nutzung verschiedener Datentypen in Python.
  
 '''
 import numpy as np
+import copy
 
 file = open('Puzzle.txt','r')
 PuzzleString=file.read()
@@ -75,19 +76,27 @@ PosRot.append(np.mat(' 1, 0, 0; 0,-1, 0; 0, 0,-1'))
 
 # Zustand des zusammengebauten Puzzles
 state=np.zeros([12,12,12],dtype=np.int)
+# bereits verbaute Teile
+used=[0 for ip in range(6)]
+# Position der verbauten Teile
+PartsPos=[[] for ip in range(6)]
 
 # Teil einfügen
 def insertPart(position,part,rotation):
-	#print(PosOff[position],PosRot[position])
 	ind=PosOff[position]+PosRot[position]*PartsRot[part][rotation]
-	#print(ind[0])
-	state[ind[0],ind[1],ind[2]]=part+1
+	if np.max(state[ind[0],ind[1],ind[2]])==0:
+		state[ind[0],ind[1],ind[2]]=part+1
+		used[part]=1
+		PartsPos[part]=ind
+		return True
+	else:
+		return False
 
 # Teil entfernen
 def removePart(position,part,rotation):
 	ind=PosOff[position]+PosRot[position]*PartsRot[part][rotation]
-	#print(ind[0])
 	state[ind[0],ind[1],ind[2]]=0
+	used[part]=0
 
 # Zustand anzeigen
 def showState(state):
@@ -97,13 +106,49 @@ def showState(state):
 				print(state[ix+3,iy+3,iz+3],' ',end='')
 			print('  ',end='')
 		print()
-	
-for pos in range(6):
-	print()
-	insertPart(pos,0,0)
-	showState(state)
-	removePart(pos,0,0)
+		
+global sol
+sol=0
+solutions=[]
+solpos=[]
 
-# Loesung suchen
+# Alle Loesungszustaende suchen
+def solve(pos):
+	global sol
+	for part in range(6):
+		if used[part]:
+			continue
+		for rot in range(len(PartsRot[part])):
+			if insertPart(pos,part,rot):
+				#print('pos=',pos,' part',part,' rot',rot)
+				if pos==5:
+					print('sol ',sol)
+					solutions.append(np.copy(state))
+					solpos.append(copy.deepcopy(PartsPos))
+					sol=sol+1
+				else:
+					solve(pos+1)
+				removePart(pos,part,rot)
+				
+# erstes Teil festlegen um gedrehte Loesungen zu vermeiden
+insertPart(0,0,0)
+solve(1)
+removePart(0,0,0)
+showState(solutions[0])
+# Verschiebungen
+directions=np.mat('-1,1,0,0,0,0;0,0,-1,1,0,0;0,0,0,0,-1,1')
+
+# Teil verschieben
+def movePart(part,shift):
+	ind=PartsPos[part]
+	state[ind[0],ind[1],ind[2]]=0
+	ind2=PartsPos[part]+directions[:,shift]
+	ok= np.max(state[ind2[0],ind2[1],ind2[2]])==0
+	if ok:
+		ind=ind2
+	state[ind[0],ind[1],ind[2]]=part+1
+	return ok
+
+movePart(0,0)
 
 
